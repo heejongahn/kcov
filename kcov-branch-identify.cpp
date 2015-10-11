@@ -31,51 +31,98 @@ SourceManager *SourceMgr;
 class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor>
 {
 public:
+    MyASTVisitor()  {
+      this->id = 0;
+      this->branches = 0;
+    }
+
+    ~MyASTVisitor() {
+      cout << "Total number of branches: " << (this->branches) << endl;
+    }
+
     bool VisitStmt(Stmt *s) {
         SourceLocation startLocation = s->getLocStart();
         SourceManager &srcmgr=*SourceMgr;
         unsigned int lineNum = srcmgr.getExpansionLineNumber(startLocation);
         unsigned int colNum = srcmgr.getExpansionColumnNumber(startLocation);
+        bool hasDefault = false;
+        SwitchCase *child;
+        
         if (!srcmgr.getFilename(startLocation).empty()) {
           fileName = srcmgr.getFilename(startLocation);
         }
 
         if (isa<IfStmt>(s))  {
-          cout << "If" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
+          printInfo("If", lineNum, colNum, fileName);
+          this->branches += 2;
+        }
+
+        else if (isa<SwitchStmt>(s)) {
+          child = ((SwitchStmt*) s)->getSwitchCaseList();
+          while (child != NULL) {
+            if (isa<DefaultStmt>(child)) {
+              hasDefault = true;
+              break;
+            }
+            child = child->getNextSwitchCase();
+          }
+
+          if (!hasDefault)  {
+            printInfo("ImpDef", lineNum, colNum, fileName);
+            this->branches += 1;
+          }
         }
 
         else if (isa<ForStmt>(s)) {
-          cout << "For" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
+          printInfo("For", lineNum, colNum, fileName);
+          this->branches += 2;
         }  
         
         else if (isa<CaseStmt>(s))  {
-          cout << "Case" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
+          printInfo("Case", lineNum, colNum, fileName);
+          this->branches += 1;
         }
 
         else if (isa<ConditionalOperator>(s))  {
-          cout << "?" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
+          printInfo("?:", lineNum, colNum, fileName);
+          this->branches += 2;
         }
 
         else if (isa<DoStmt>(s)) {
-          cout << "Do" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
-        }  
+          printInfo("Do", lineNum, colNum, fileName);
+          this->branches += 2;
+        } 
         
         else if (isa<WhileStmt>(s))  {
-          cout << "While" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
-        }
+          printInfo("While", lineNum, colNum, fileName);
+          this->branches += 2;
+        } 
 
         else if (isa<DefaultStmt>(s))  {
-          cout << "Default" << "\t" << lineNum << "\t" << colNum << "\t" << fileName << "\t" << endl;
+          printInfo("Default", lineNum, colNum, fileName);
+          this->branches += 1;
         }
         return true;
     }
     
     bool VisitFunctionDecl(FunctionDecl *f) {
         // Fill out this function for your homework
+        if (f->hasBody()) {
+          string funcname = f->getName();
+          cout << "function: " << funcname << endl;
+        }
+
         return true;
     }
 private:
     string fileName;
+    unsigned int id;
+    void printInfo(string type, unsigned int _lineNum, unsigned int _colNum, string _fileName) {
+      cout << '\t' << type << "\t" << "ID: " << (this->id) << '\t' << "Line: " << _lineNum << '\t' << "Column: " << _colNum << '\t' << "Filename: " << _fileName << "\t" << endl; 
+      id++;
+    }
+
+    unsigned int branches;
 };
 
 class MyASTConsumer : public ASTConsumer
