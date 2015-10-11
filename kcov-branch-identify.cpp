@@ -26,12 +26,12 @@
 using namespace clang;
 using namespace std;
 
-SourceManager *SourceMgr;
-
 class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor>
 {
 public:
-    MyASTVisitor()  {
+    MyASTVisitor(SourceManager& _srcmgr)
+      :srcmgr(_srcmgr)
+    {
       this->id = 0;
       this->branches = 0;
     }
@@ -42,7 +42,6 @@ public:
 
     bool VisitStmt(Stmt *s) {
         SourceLocation startLocation = s->getLocStart();
-        SourceManager &srcmgr=*SourceMgr;
         unsigned int lineNum = srcmgr.getExpansionLineNumber(startLocation);
         unsigned int colNum = srcmgr.getExpansionColumnNumber(startLocation);
         bool hasDefault = false;
@@ -116,6 +115,7 @@ public:
     }
 private:
     string fileName;
+    SourceManager &srcmgr;
     unsigned int id;
     void printInfo(string type, unsigned int _lineNum, unsigned int _colNum, string _fileName) {
       cout << '\t' << type << "\t" << "ID: " << (this->id) << '\t' << "Line: " << _lineNum << '\t' << "Column: " << _colNum << '\t' << "Filename: " << _fileName << "\t" << endl; 
@@ -128,8 +128,8 @@ private:
 class MyASTConsumer : public ASTConsumer
 {
 public:
-    MyASTConsumer()
-        : Visitor() //initialize MyASTVisitor
+    MyASTConsumer(SourceManager& srcmgr)
+        : Visitor(srcmgr) //initialize MyASTVisitor
     {}
 
     virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
     
     // SourceManager handles loading and caching of source files into memory.
     TheCompInst.createSourceManager(FileMgr);
-    SourceMgr = &TheCompInst.getSourceManager();
+    SourceManager &SourceMgr = TheCompInst.getSourceManager();
 
     // Prreprocessor runs within a single source file
     TheCompInst.createPreprocessor();
@@ -220,17 +220,17 @@ int main(int argc, char *argv[])
 
     // A Rewriter helps us manage the code rewriting task.
     Rewriter TheRewriter;
-    TheRewriter.setSourceMgr(*SourceMgr, TheCompInst.getLangOpts());
+    TheRewriter.setSourceMgr(SourceMgr, TheCompInst.getLangOpts());
 
     // Set the main file handled by the source manager to the input file.
     const FileEntry *FileIn = FileMgr.getFile(argv[1]);
-    (*SourceMgr).createMainFileID(FileIn);
+    SourceMgr.createMainFileID(FileIn);
     
     // Inform Diagnostics that processing of a source file is beginning. 
     TheCompInst.getDiagnosticClient().BeginSourceFile(TheCompInst.getLangOpts(),&TheCompInst.getPreprocessor());
     
     // Create an AST consumer instance which is going to get called by ParseAST.
-    MyASTConsumer TheConsumer;
+    MyASTConsumer TheConsumer(SourceMgr);
 
     // Parse the file to AST, registering our consumer as the AST consumer.
     ParseAST(TheCompInst.getPreprocessor(), &TheConsumer, TheCompInst.getASTContext());
