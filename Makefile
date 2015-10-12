@@ -5,9 +5,9 @@ LLVM_BUILD_DIRECTORY_NAME=llvm_build
 LLVM_BUILD_MODE=Debug+Asserts
 #LLVM_BUILD_MODE=Release+Asserts
 
-OBJS=	kcov-branch-identify.o 
-SRCS=	kcov-branch-identify.cpp 
-TARGET=	kcov-branch-identify
+OBJS=	kcov.o 
+SRCS=	kcov.cpp 
+TARGET=	kcov
 
 ################
 LLVM_SRC_PATH=$(LLVM_BASE_PATH)/$(LLVM_SRC_DIRECTORY_NAME)
