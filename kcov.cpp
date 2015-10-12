@@ -89,11 +89,6 @@ public:
           printInfo("Case", lineNum, colNum, fileName);
           this->branches += 1;
           CaseStmt *caseStmt = cast<CaseStmt>(s);
-          Expr* LHS = caseStmt->getLHS();
-          Expr* RHS = caseStmt->getRHS();
-
-          cout << rewriter.ConvertToString(LHS) << endl;
-          cout << rewriter.ConvertToString(RHS) << endl;
           rewriter.InsertTextAfter(caseStmt->getCaseLoc(), "/* Case */");
         }
 
@@ -134,6 +129,12 @@ public:
         // Fill out this function for your homework
         if (f->hasBody()) {
           string funcname = f->getName();
+          if (funcname == "main") {
+            SourceLocation beginOfMain = (f->getSourceRange()).getBegin();
+            SourceLocation endOfMain = (f->getSourceRange()).getEnd();
+            rewriter.InsertTextBefore(beginOfMain, "/* Begin of main */\n");
+            rewriter.InsertTextBefore(endOfMain, "/* End of main */\n");
+          }
           cout << "function: " << funcname << endl;
         }
 
