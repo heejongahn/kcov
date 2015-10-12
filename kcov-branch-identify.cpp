@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <map>
 #include <utility>
 
@@ -29,12 +30,9 @@ using namespace std;
 class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor>
 {
 public:
-    MyASTVisitor(SourceManager& _srcmgr)
-      :srcmgr(_srcmgr)
-    {
-      this->id = 0;
-      this->branches = 0;
-    }
+    MyASTVisitor(SourceManager& _srcmgr, Rewriter& _rewriter)
+      :srcmgr(_srcmgr), rewriter(_rewriter), id(0), branches(0)
+    {}
 
     ~MyASTVisitor() {
       cout << "Total number of branches: " << (this->branches) << endl;
@@ -54,6 +52,9 @@ public:
         if (isa<IfStmt>(s))  {
           printInfo("If", lineNum, colNum, fileName);
           this->branches += 2;
+          IfStmt *ifStmt = cast<IfStmt>(s);
+          Expr* condition = ifStmt->getCond();
+          rewriter.InsertTextAfter(condition->getLocStart(), "/*start of cond*/");
         }
 
         else if (isa<SwitchStmt>(s)) {
@@ -116,20 +117,21 @@ public:
 private:
     string fileName;
     SourceManager &srcmgr;
+    Rewriter &rewriter;
     unsigned int id;
+    unsigned int branches;
+
     void printInfo(string type, unsigned int _lineNum, unsigned int _colNum, string _fileName) {
       cout << '\t' << type << "\t" << "ID: " << (this->id) << '\t' << "Line: " << _lineNum << '\t' << "Column: " << _colNum << '\t' << "Filename: " << _fileName << "\t" << endl; 
       id++;
     }
-
-    unsigned int branches;
 };
 
 class MyASTConsumer : public ASTConsumer
 {
 public:
-    MyASTConsumer(SourceManager& srcmgr)
-        : Visitor(srcmgr) //initialize MyASTVisitor
+    MyASTConsumer(SourceManager& srcmgr, Rewriter& rewriter)
+        : Visitor(srcmgr, rewriter) //initialize MyASTVisitor
     {}
 
     virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
@@ -229,11 +231,21 @@ int main(int argc, char *argv[])
     // Inform Diagnostics that processing of a source file is beginning. 
     TheCompInst.getDiagnosticClient().BeginSourceFile(TheCompInst.getLangOpts(),&TheCompInst.getPreprocessor());
     
+
     // Create an AST consumer instance which is going to get called by ParseAST.
-    MyASTConsumer TheConsumer(SourceMgr);
+    Rewriter& ReWr = TheRewriter;
+    MyASTConsumer TheConsumer(SourceMgr, ReWr);
 
     // Parse the file to AST, registering our consumer as the AST consumer.
     ParseAST(TheCompInst.getPreprocessor(), &TheConsumer, TheCompInst.getASTContext());
+
+    const RewriteBuffer *RewriteBuf = TheRewriter.getRewriteBufferFor(SourceMgr.getMainFileID());
+    if (RewriteBuf != NULL)  {
+      ofstream output("output.txt");
+      output << string(RewriteBuf->begin(), RewriteBuf->end());
+      output.close();
+      cout << "haha" << endl;
+    }
 
     return 0;
 }
