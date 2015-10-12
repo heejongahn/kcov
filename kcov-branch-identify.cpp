@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
         llvm::errs() << "Usage: kcov-branch-identify <filename>\n";
         return 1;
     }
+    string filename = (string) argv[1];
 
     // CompilerInstance will hold the instance of the Clang compiler for us,
     // managing the various objects needed to run the compiler.
@@ -241,10 +242,10 @@ int main(int argc, char *argv[])
 
     const RewriteBuffer *RewriteBuf = TheRewriter.getRewriteBufferFor(SourceMgr.getMainFileID());
     if (RewriteBuf != NULL)  {
-      ofstream output("output.txt");
+      filename = (filename.substr(0,filename.size()-2)) + "-kcov.c";
+      ofstream output(filename.c_str());
       output << string(RewriteBuf->begin(), RewriteBuf->end());
       output.close();
-      cout << "haha" << endl;
     }
 
     return 0;
